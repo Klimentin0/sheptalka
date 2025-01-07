@@ -13,7 +13,8 @@ func (cfg *apiConfig) middlewareMetricsInc(next http.Handler) http.Handler {
 }
 
 func (cfg *apiConfig) reqCountHandler(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-type", "text/plain; charset=utf-8")
+	counterPage := "<html><body><h1>Welcome, Chirpy Admin</h1><p>Chirpy has been visited %d times!</p></body></html>"
+	w.Header().Add("Content-type", "text/html")
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Number of hits %d", cfg.fileserverHits.Load())))
+	w.Write([]byte(fmt.Sprintf(counterPage, cfg.fileserverHits.Load())))
 }
