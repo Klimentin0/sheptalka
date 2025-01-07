@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"strings"
 )
 
 type Shepot struct {
@@ -15,7 +16,7 @@ type ErrorResp struct {
 }
 
 type ValidResp struct {
-	Valid bool `json:"valid"`
+	Cleaned string `json:"cleaned_body"`
 }
 
 const maxShepotLgth = 140
@@ -51,9 +52,9 @@ func validateShepotHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(dat)
 		return
 	}
-
+	cleanedBody := badWordCleaner(shepot.Body)
 	respBody := ValidResp{
-		Valid: true,
+		Cleaned: cleanedBody,
 	}
 	dat, err := json.Marshal(respBody)
 	if err != nil {
@@ -62,4 +63,20 @@ func validateShepotHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(200)
 	w.Write(dat)
+}
+
+func badWordCleaner(body string) string {
+	split := strings.Split(body, " ")
+	//Типо плоxие слова
+	badWords := []string{"kerfuffle", "sharbert", "fornax"}
+	var cleanedSplit []string
+	for i := range split {
+		for j := range badWords {
+			if strings.ToLower(split[i]) == badWords[j] {
+				split[i] = "****"
+			}
+		}
+		cleanedSplit = append(cleanedSplit, split[i])
+	}
+	return strings.Join(cleanedSplit, " ")
 }
