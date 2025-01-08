@@ -6,15 +6,24 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
 	"github.com/Klimentin0/sheptalka/internal/database"
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
-	queries        *database.Queries
+	db             *database.Queries
+}
+
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
 }
 
 func main() {
@@ -33,15 +42,16 @@ func main() {
 
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
-		queries:        dbQueries,
+		db:             dbQueries,
 	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/app/", apiCfg.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(root)))))
 	mux.HandleFunc("GET /api/healthz", healthHandler)
 	mux.HandleFunc("POST /api/validateShepot", validateShepotHandler)
+	mux.HandleFunc("POST /api/users", apiCfg.createUserHandler)
 	mux.HandleFunc("GET /admin/count", apiCfg.reqCountHandler)
-	mux.HandleFunc("POST /admin/reset", apiCfg.resetCountHandler)
+	mux.HandleFunc("POST /admin/reset", apiCfg.resetDb)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

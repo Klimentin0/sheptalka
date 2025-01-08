@@ -1,12 +1,22 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
+	"os"
 )
 
-func (cfg *apiConfig) resetCountHandler(w http.ResponseWriter, r *http.Request) {
-	cfg.fileserverHits.Store(0)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(fmt.Sprintf("Number of hits %d", cfg.fileserverHits.Load())))
+func (cfg *apiConfig) resetDb(w http.ResponseWriter, r *http.Request) {
+	dbPlatform := os.Getenv("PLATFORM")
+
+	if dbPlatform != "dev" {
+		http.Error(w, "403 Forbidden", http.StatusForbidden)
+		return
+	}
+
+	if err := cfg.db.DeleteAllUsers(r.Context()); err != nil {
+		http.Error(w, "Failed to reset database", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(200)
 }
