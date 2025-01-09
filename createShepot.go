@@ -5,10 +5,23 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
+
+	"github.com/Klimentin0/sheptalka/internal/database"
+	"github.com/google/uuid"
 )
 
 type Shepot struct {
-	Body string `json:"body"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Body      string    `json:"body"`
+	User_id   uuid.UUID `json:"user_id"`
+}
+
+type shepotParams struct {
+	Body   string    `json:"body"`
+	UserID uuid.UUID `json:"user_id"`
 }
 
 type ErrorResp struct {
@@ -19,12 +32,10 @@ type ValidResp struct {
 	Cleaned string `json:"cleaned_body"`
 }
 
-const maxShepotLgth = 140
-
-func validateShepotHandler(w http.ResponseWriter, r *http.Request) {
+func (cfg *apiConfig) shepotHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	shepot := Shepot{}
-	err := decoder.Decode(&shepot)
+	shepotParams := shepotParams{}
+	err := decoder.Decode(&shepotParams)
 	if err != nil {
 		respBody := ErrorResp{
 			Error: "Error decoding json",
@@ -39,7 +50,7 @@ func validateShepotHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(shepot.Body) > maxShepotLgth {
+	if len(shepotParams.Body) > 140 {
 		respBody := ErrorResp{
 			Error: "Слишком длинное сообщение",
 		}
@@ -52,16 +63,26 @@ func validateShepotHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write(dat)
 		return
 	}
-	cleanedBody := badWordCleaner(shepot.Body)
-	respBody := ValidResp{
-		Cleaned: cleanedBody,
+
+	cleanedBody := badWordCleaner(shepotParams.Body)
+	sqlParams := database.CreateShepotParams{
+		Body:   cleanedBody,
+		UserID: shepotParams.UserID,
 	}
-	dat, err := json.Marshal(respBody)
+
+	dbShepot, err := cfg.db.CreateShepot(r.Context(), sqlParams)
+	if err != nil {
+		log.Printf("Error creating user %s", err)
+	}
+
+	shepot := mapDbShepot(dbShepot)
+
+	dat, err := json.Marshal(shepot)
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(200)
+	w.WriteHeader(201)
 	w.Write(dat)
 }
 
@@ -79,4 +100,14 @@ func badWordCleaner(body string) string {
 		cleanedSplit = append(cleanedSplit, split[i])
 	}
 	return strings.Join(cleanedSplit, " ")
+}
+
+func mapDbShepot(dbShepot database.Shepot) Shepot {
+	return Shepot{
+		ID:        dbShepot.ID,
+		CreatedAt: dbShepot.CreatedAt,
+		UpdatedAt: dbShepot.UpdatedAt,
+		Body:      dbShepot.Body,
+		User_id:   dbShepot.UserID,
+	}
 }

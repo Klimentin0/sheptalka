@@ -1,51 +1,53 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/Klimentin0/sheptalka/internal/database"
+	"github.com/google/uuid"
 )
 
-type Params struct {
+type User struct {
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
+}
+
+type userParams struct {
 	Email string `json:"email"`
 }
 
 func (cfg *apiConfig) createUserHandler(w http.ResponseWriter, r *http.Request) {
 	decoder := json.NewDecoder(r.Body)
-	params := Params{}
-	err := decoder.Decode(&params)
+	userParams := userParams{}
+	err := decoder.Decode(&userParams)
 	if err != nil {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return
 	}
-	// ??
-	var email sql.NullString
-	if params.Email != "" {
-		email = sql.NullString{String: params.Email, Valid: true}
-	} else {
-		email = sql.NullString{Valid: false}
-	}
-	user, err := cfg.db.CreateUser(r.Context(), email)
+	dbUser, err := cfg.db.CreateUser(r.Context(), userParams.Email)
 	if err != nil {
 		log.Printf("Error creating user %s", err)
 	}
-	mappedUser, err := json.Marshal(mapDbUser(user))
+	mappedUser := mapDbUser(dbUser)
+	user, err := json.Marshal(mappedUser)
 	if err != nil {
 		log.Printf("Error marshalling JSON: %s", err)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(201)
-	w.Write(mappedUser)
+	w.Write(user)
 }
 
 func mapDbUser(dbUser database.User) User {
 	return User{
 		ID:        dbUser.ID,
-		CreatedAt: dbUser.CreatedAt.Time,
-		UpdatedAt: dbUser.UpdatedAt.Time,
-		Email:     dbUser.Email.String,
+		CreatedAt: dbUser.CreatedAt,
+		UpdatedAt: dbUser.UpdatedAt,
+		Email:     dbUser.Email,
 	}
 }
