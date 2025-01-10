@@ -10,4 +10,8 @@ VALUES (
 RETURNING *;
 
 -- name: DeleteAllShepots :exec
-DELETE FROM users;
+DELETE FROM shepots;
+
+-- name: GetAllShepots :many
+SELECT * FROM shepots
+ORDER BY created_at;

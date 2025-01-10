@@ -42,6 +42,8 @@ func main() {
 	mux.HandleFunc("POST /api/users", apiCfg.createUserHandler)
 	//api шепотов
 	mux.HandleFunc("POST /api/shepots", apiCfg.shepotHandler)
+	mux.HandleFunc("GET /api/shepots", apiCfg.getShepotsHandler)
+	mux.HandleFunc("GET /api/shepots/{shepotID}", apiCfg.getShepotHandler)
 	//админка
 	mux.HandleFunc("GET /admin/count", apiCfg.reqCountHandler)
 	mux.HandleFunc("POST /admin/reset", apiCfg.resetDb)
